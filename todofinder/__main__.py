@@ -6,17 +6,14 @@ import re
 from typing import Iterable, Optional
 import sys
 
+LOWERCASE_CHARS = { chr(x) for x in range(ord('a'), ord('z')) }
+UPPERCASE_CHARS = { char.upper() for char in LOWERCASE_CHARS }
+DIGITS = { chr(x) for x in range(ord('0'), ord('9')) }
+VARNAME_CHARS = LOWERCASE_CHARS | UPPERCASE_CHARS | DIGITS | { '_' }
+
 TOKENS = {
     "todo",
     "fixme",
-}
-CSV_FIELDS = {
-    "file": lambda todo: todo.context.file,
-    "line_number": lambda todo: todo.context.line_number,
-    "text": lambda todo: todo.text,
-    "token": lambda todo: todo.token,
-    "full_line": lambda todo: todo.context.full_line,
-    "filetype": lambda todo: todo.context.filetype
 }
 
 TodoContext = namedtuple("TodoContext", "file line_number full_line filetype")
@@ -40,26 +37,47 @@ def get_files(glob_paths: str, recursive: bool=True) -> Iterable[str]:
     for glob_path in glob_paths:
         yield from glob.iglob(glob_path, recursive=recursive)
 
-def get_todo_text(line: str, matched_token: str) -> str:
-    text = re.split(matched_token, line, flags=re.IGNORECASE)[1]
-    text = text.lstrip(": ")
-    text = text.strip()
-    return text
+def get_todo_text(line: str) -> str:
+    # Check for TODO tokens
+    lower_line = line.lower()
+    for token in TOKENS:
+        if token in lower_line:
+            break
+    else:
+        return None
+
+    # Look at what comes before and after
+    before, *after = re.split(token, line, flags=re.IGNORECASE)
+
+    # Guard against e.g. "autodoc"
+    if before and before[-1] in VARNAME_CHARS:
+        return None
+
+    # Re-assemble the string
+    text = ", ".join(after)
+
+    # Remove the colon after the TODO
+    text = text.lstrip(":")
+    return token, text
 
 def scan_line(line: str, context: TodoContext) -> Optional[Todo]:
-    for token in TOKENS:
-        if token in line.lower():
-            return Todo(token=token, text=get_todo_text(line, token), context=context)
+    token_and_text = get_todo_text(line)
+    if token_and_text is not None:
+        token, text = token_and_text
+        return Todo(token=token, text=text, context=context)
 
 def scan_file(path: str) -> Iterable[Todo]:
+    extension = path.split(".")[-1]
     try:
         with open(path) as file:
             for line_no, line in enumerate(file):
-                context = TodoContext(path, line_no, line.strip(), path.split(".")[-1])
-                if (todo := scan_line(line, context)) is not None:
+                line = line.strip()
+                context = TodoContext(path, line_no, line, extension)
+                todo = scan_line(line, context)
+                if todo is not None:
                     yield todo
     except Exception as exception:
-        log_error("Exception while scanning {}: {}".format(path, exception))
+        log_error("{} while scanning {}: {}".format(type(exception).__name__, path, exception))
 
 def scan_files(paths: Iterable[str], output_file: str) -> Iterable[Todo]:
     for path in paths:
@@ -70,13 +88,29 @@ def scan_files(paths: Iterable[str], output_file: str) -> Iterable[Todo]:
 def to_csv(todos: Iterable[Todo], output_file: str):
     with open(output_file, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(CSV_FIELDS.keys())
+        writer.writerow([
+            "file",
+            "line_number",
+            "text",
+            "token",
+            "full_line",
+            "filetype"
+        ])
         for todo in todos:
-            writer.writerow([func(todo) for func in CSV_FIELDS.values()])
+            writer.writerow([
+                todo.context.file,
+                todo.context.line_number,
+                todo.text,
+                todo.token,
+                todo.context.full_line,
+                todo.context.filetype,
+            ])
 
-if __name__ == "__main__":
+def main():
     args = get_args()
     files = get_files(args.glob)
     result = scan_files(files, output_file=args.output)
     to_csv(result, output_file=args.output)
-    
+
+if __name__ == "__main__":
+    main()
