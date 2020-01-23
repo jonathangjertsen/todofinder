@@ -6,7 +6,7 @@ It finds TODOs!
 
 Python 3.8
 
-To install, clone the repo and run `pip install -e .`. 
+To install, run `pip install todofinder`.
 
 ## Usage
 
