@@ -1,0 +1,7 @@
+.idea
+build
+*.csv
+*.egg-info
+*__pycache__
+*.tar.gz
+*.whl
