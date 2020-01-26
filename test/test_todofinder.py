@@ -126,6 +126,7 @@ def test_cli():
         assert csv_data == """
 file,line_number,text,token,full_line,filetype
 {main_py},0, add code,todo,#TODO: add code,py
+{main_py},2, on indented line,todo,# TODO: on indented line,py
 {readme_md},0, example,todo,This is a test-README. TODO: example,md
 {main_c},2, something,todo,"printf(""Hello, World!""); // TODO: something",c
 {unknown},0, nothing,todo,".unknown is not associated with any plugins, so it should make the main scanline function run. TODO nothing",unknown
