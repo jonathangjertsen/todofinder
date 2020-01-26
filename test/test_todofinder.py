@@ -132,6 +132,11 @@ file,line_number,text,token,full_line,filetype
 {main_py},8, catch THIS,todo,"yet_another = ""this line has an inline multiline comment"" \"\"\"\"\"\"TODO: catch THIS\"\"\"\"\"\"\",py
 {readme_md},0, example,todo,This is a test-README. TODO: example,md
 {main_c},2, something,todo,"printf(""Hello, World!""); // TODO: something",c
+{main_c},4, catch multline comment,todo,TODO: catch multline comment,c
+{main_c},7, catch,todo,int x = 1; /* inline multiline-style comment TODO: catch*/,c
+{main_c},9, catch standalone comment,todo,// TODO: catch standalone comment,c
+{main_c},10,catch without spaces,todo,//TODO:catch without spaces,c
+{main_c},11,"catch multiline without spaces ,  another",todo,/*TODO:catch multiline without spaces TODO another*/,c
 {unknown},0, nothing,todo,".unknown is not associated with any plugins, so it should make the main scanline function run. TODO nothing",unknown
 """.lstrip().format(**files)
     finally:

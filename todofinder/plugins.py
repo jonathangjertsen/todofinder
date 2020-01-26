@@ -8,6 +8,9 @@ _enabled_plugins = {}
 _scan_line_original = scan_line
 _plugin_state = {
     "python_in_multiline_comment": False,
+    "python_last_file": None,
+    "c_in_multiline_comment": False,
+    "c_last_file": None,
 }
 
 ScanLineFunction = Callable[[str, TodoContext], Optional[Todo]]
@@ -41,6 +44,11 @@ def py(line: str, context: TodoContext) -> Optional[Todo]:
     """
     Line scanner that takes multi-line comments into account
     """
+    # Restart state when there is a new file
+    if _plugin_state["python_last_file"] != context.file:
+        _plugin_state["python_in_multiline_comment"] = False
+        _plugin_state["python_last_file"] = context.file
+
     # Figure out if we are in a multiline comment and keep the global state in sync
     in_multiline_comment = _plugin_state["python_in_multiline_comment"]
     n_multiline_tokens = line.count('"""')
@@ -65,4 +73,32 @@ def py(line: str, context: TodoContext) -> Optional[Todo]:
 
 @plugin("c")
 def c(line: str, context: TodoContext) -> Optional[Todo]:
-    return _scan_line_original(line, context)
+    # Restart state when there is a new file
+    if _plugin_state["c_last_file"] != context.file:
+        _plugin_state["c_in_multiline_comment"] = False
+        _plugin_state["c_last_file"] = context.file
+
+    # Figure out if we are in a multiline comment and keep the global state in sync
+    in_multiline_comment = _plugin_state["c_in_multiline_comment"]
+    n_multiline_tokens = line.count('/*') + line.count('*/')
+    if n_multiline_tokens & 1:
+        in_multiline_comment = not in_multiline_comment
+        _plugin_state["c_in_multiline_comment"] = in_multiline_comment
+
+    # Figure out if we have a comment, and pick out the relevant part if necessary
+    has_comment = in_multiline_comment
+    if "//" in line:
+        line = "".join(line.split("//")[1:])
+        has_comment = True
+    if '/*' in line:
+        if '*/' in line:
+            line = "".join(line.split('/*')[1:]).split('*/')[0]
+        else:
+            line = "".join(line.split('/*')[1:])
+        has_comment = True
+
+    # Only scan if there is a comment in there
+    if has_comment:
+        return _scan_line_original(line, context)
+    else:
+        return None
