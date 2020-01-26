@@ -1,5 +1,7 @@
 # TODO-finder
 
+[![Build Status](https://travis-ci.com/jonathangjertsen/todofinder.svg?branch=master)](https://travis-ci.com/jonathangjertsen/todofinder)
+
 It finds TODOs!
 
 ## Requirements
