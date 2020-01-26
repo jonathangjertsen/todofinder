@@ -3,7 +3,7 @@ from collections import namedtuple
 import glob
 import re
 import sys
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional, List, Tuple
 
 LOWERCASE_CHARS = { chr(x) for x in range(ord('a'), ord('z')) }
 UPPERCASE_CHARS = { char.upper() for char in LOWERCASE_CHARS }
@@ -17,6 +17,16 @@ TOKENS = {
 
 TodoContext = namedtuple("TodoContext", "file line_number full_line filetype")
 Todo = namedtuple("Todo", "token text context")
+TodoBlame = namedtuple("TodoBlame", "author date commit message")
+
+TODO_FIELDS = [
+    "file",
+    "line_number",
+    "text",
+    "token",
+    "full_line",
+    "filetype"
+]
 
 def log_error(message):
     print(message, file=sys.stderr)
@@ -74,23 +84,20 @@ def scan_files(paths: Iterable[str], output_file: str) -> Iterable[Todo]:
         yield from scan_file(path)
 
 
+def to_csv_row(todo: Todo) -> List[str]:
+    return [
+        todo.context.file,
+        todo.context.line_number,
+        todo.text,
+        todo.token,
+        todo.context.full_line,
+        todo.context.filetype,
+    ]
+
+
 def to_csv(todos: Iterable[Todo], output_file: str):
     with open(output_file, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow([
-            "file",
-            "line_number",
-            "text",
-            "token",
-            "full_line",
-            "filetype"
-        ])
+        writer.writerow(TODO_FIELDS)
         for todo in todos:
-            writer.writerow([
-                todo.context.file,
-                todo.context.line_number,
-                todo.text,
-                todo.token,
-                todo.context.full_line,
-                todo.context.filetype,
-            ])
+            writer.writerow(to_csv_row(todo))
