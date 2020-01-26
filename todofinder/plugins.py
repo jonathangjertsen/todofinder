@@ -66,7 +66,3 @@ def py(line: str, context: TodoContext) -> Optional[Todo]:
 @plugin("c")
 def c(line: str, context: TodoContext) -> Optional[Todo]:
     return _scan_line_original(line, context)
-
-@plugin("md")
-def md(line: str, context: TodoContext) -> Optional[Todo]:
-    return _scan_line_original(line, context)

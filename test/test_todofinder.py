@@ -105,7 +105,7 @@ def test_cli():
         "unknown": str(TESTVECTOR_DIR / "file.unknown"),
     }
 
-    plugins = ["md", "py", "c"]
+    plugins = ["py", "c"]
 
     try:
         # Touch the todos file
