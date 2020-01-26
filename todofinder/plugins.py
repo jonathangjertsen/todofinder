@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional, List
 
 import todofinder
 from todofinder import TodoContext, Todo, scan_line
@@ -7,15 +7,16 @@ _plugins = {}
 _enabled_plugins = {}
 _scan_line_original = scan_line
 
-def plugin_names():
+ScanLineFunction = Callable[[str, TodoContext], Optional[Todo]]
+
+def plugin_names() -> List[str]:
     return list(_plugins)
 
-def plugin(filetype):
-    def wrapper2(func):
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        _plugins[filetype] = wrapper
-    return wrapper2
+def plugin(filetype: str) -> Callable[[ScanLineFunction], ScanLineFunction]:
+    def decorator(func: ScanLineFunction) -> ScanLineFunction:
+        _plugins[filetype] = func
+        return func
+    return decorator
 
 def scan_line_with_plugins(line: str, context: TodoContext) -> Optional[Todo]:
     for filetype, func in _enabled_plugins.items():
