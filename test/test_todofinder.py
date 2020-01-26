@@ -1,8 +1,12 @@
+import argparse
 from pathlib import Path
-
-import pytest
+from unittest.mock import patch
+import sys
+import tempfile
+import os
 
 import todofinder
+import todofinder.__main__ as cli
 
 TESTVECTOR_DIR: Path = Path(__file__).parent / "testvector"
 
@@ -83,3 +87,14 @@ file,line_number,text,token,full_line,filetype
 {real_file},0, example,todo,This is a test-README. TODO: example,md
 """.format(real_file=real_file).lstrip()
 
+
+def test_cli():
+    tf = tempfile.NamedTemporaryFile(delete=False)
+    tf.close()
+    try:
+        args = ["todofinder", "-g", "**/*.csv", "-o", tf.name]
+        with patch.object(sys, "argv", args):
+            with patch.object(todofinder.__main__, "__name__", "__main__"):
+                cli.cli()
+    finally:
+        os.remove(tf.name)

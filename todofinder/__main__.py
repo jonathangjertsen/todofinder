@@ -19,5 +19,8 @@ def main():
     result = scan_files(files, output_file=args.output)
     to_csv(result, output_file=args.output)
 
-if __name__ == "__main__":
-    main()
+def cli():
+    if __name__ == "__main__":
+        main()
+
+cli()
