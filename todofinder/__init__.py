@@ -60,6 +60,10 @@ def get_todo_text(line: str) -> Optional[Tuple[str, str]]:
     if before and before[-1] in VARNAME_CHARS:
         return None
 
+    # Guard against e.g. "todofinder"
+    if after and after[0] and after[0][0] in VARNAME_CHARS:
+        return None
+
     # Re-assemble the string
     text = ", ".join(after)
 
@@ -104,11 +108,18 @@ def to_csv_row(todo: Todo) -> List[str]:
     ]
 
 def to_csv(todos: Iterable[Todo], output_file: str):
-    with open(output_file, "w", newline="") as csvfile:
+    csvfile = sys.stdout
+    try:
+        if output_file is not None:
+            csvfile = open(output_file, "w", newline="")
+
         writer = csv.writer(csvfile)
         writer.writerow(TODO_FIELDS)
         for todo in todos:
             writer.writerow(to_csv_row(todo))
+    finally:
+        if csvfile != sys.stdout:
+            csvfile.close()
 
 def shell_exec(args) -> Optional[str]:
     try:
