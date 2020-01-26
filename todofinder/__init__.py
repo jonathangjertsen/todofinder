@@ -110,46 +110,42 @@ def to_csv(todos: Iterable[Todo], output_file: str):
         for todo in todos:
             writer.writerow(to_csv_row(todo))
 
-@lru_cache
-def get_git_message(sha: str) -> Optional[str]:
+def shell_exec(args) -> Optional[str]:
     try:
-        proc = subprocess.run([
-            "git", "show", sha,
-            "-s",
-            '--format="%s"',
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        text = proc.stdout
-        text = text.decode("utf-8").strip().strip('"')
+        proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if proc.stderr:
             return None
+        text = proc.stdout
+        text = text.decode("utf-8").strip()
     except Exception:
         return None
     return text
 
 @lru_cache
+def get_git_message(sha: str) -> Optional[str]:
+    text = shell_exec([
+        "git", "show", sha,
+        "-s",
+        '--format="%s"',
+    ])
+    return text.strip('"') if text else None
+
+@lru_cache
 def get_blame_for_file(file: str) -> Optional[Dict[int, Dict[str, str]]]:
-    try:
-        proc = subprocess.run([
-            "git", "blame", file,
-            "--no-show-name",
-            "--date=short",
-            "-e",
-            "-l",
-            "-w",
-            "-c",
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        text = proc.stdout
-        if proc.stderr:
-            return None
-    except subprocess.CalledProcessError as cpe:
+    text = shell_exec([
+        "git", "blame", file,
+        "--no-show-name",
+        "--date=short",
+        "-e",
+        "-l",
+        "-w",
+        "-c",
+    ])
+
+    if not text:
         return None
 
-    try:
-        decoded = text.decode("utf-8")
-    except UnicodeDecodeError:
-        return None
-
-    lines = decoded.split("\n")
+    lines = text.split("\n")
 
     blame_per_line = {}
     for line in lines:
