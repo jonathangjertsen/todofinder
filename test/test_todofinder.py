@@ -89,12 +89,46 @@ file,line_number,text,token,full_line,filetype
 
 
 def test_cli():
-    tf = tempfile.NamedTemporaryFile(delete=False)
-    tf.close()
+    todos_name = "todos_cli.csv"
+
+    globs = [
+        str(TESTVECTOR_DIR / "**/*.py"),
+        str(TESTVECTOR_DIR / "**/*.md"),
+        str(TESTVECTOR_DIR / "**/*.c"),
+        str(TESTVECTOR_DIR / "**/*.unknown"),
+    ]
+
+    files = {
+        "main_py": str(TESTVECTOR_DIR / "main.py"),
+        "readme_md": str(TESTVECTOR_DIR / "README.md"),
+        "main_c": str(TESTVECTOR_DIR / "main.c"),
+        "unknown": str(TESTVECTOR_DIR / "file.unknown"),
+    }
+
+    plugins = ["md", "py", "c"]
+
     try:
-        args = ["todofinder", "-g", "**/*.csv", "-o", tf.name]
+        # Touch the todos file
+        with open(todos_name, "w"):
+            pass
+
+        # CLI arguments
+        args = ["todofinder", "-g", *globs, "-o", todos_name, "-p", *plugins]
+
+        # Make the CLI function think it is running from the command line
         with patch.object(sys, "argv", args):
             with patch.object(todofinder.__main__, "__name__", "__main__"):
                 cli.cli()
+
+        #
+        with open(todos_name, "r") as file:
+            csv_data = file.read()
+        assert csv_data == """
+file,line_number,text,token,full_line,filetype
+{main_py},0, add code,todo,#TODO: add code,py
+{readme_md},0, example,todo,This is a test-README. TODO: example,md
+{main_c},2, something,todo,"printf(""Hello, World!""); // TODO: something",c
+{unknown},0, nothing,todo,".unknown is not associated with any plugins, so it should make the main scanline function run. TODO nothing",unknown
+""".lstrip().format(**files)
     finally:
-        os.remove(tf.name)
+        os.remove(todos_name)
