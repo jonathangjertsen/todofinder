@@ -20,7 +20,11 @@ def main():
     files = get_files(args.glob)
 
     if args.plugins:
-        swap_scan_line_function(args.plugins)
+        if "all" in args.plugins:
+            plugins = plugin_names()
+        else:
+            plugins = args.plugins
+        swap_scan_line_function(plugins)
     result = scan_files(files, output_file=args.output)
     to_csv(result, output_file=args.output)
     if args.plugins:

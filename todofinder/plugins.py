@@ -16,7 +16,7 @@ _plugin_state = {
 ScanLineFunction = Callable[[str, TodoContext], Optional[Todo]]
 
 def plugin_names() -> List[str]:
-    return list(_plugins)
+    return list(_plugins) + ["all"]
 
 def plugin(filetype: str) -> Callable[[ScanLineFunction], ScanLineFunction]:
     def decorator(func: ScanLineFunction) -> ScanLineFunction:

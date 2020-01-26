@@ -1,9 +1,9 @@
-import argparse
 from pathlib import Path
 from unittest.mock import patch
 import sys
-import tempfile
 import os
+
+import pytest
 
 import todofinder
 import todofinder.__main__ as cli
@@ -87,8 +87,8 @@ file,line_number,text,token,full_line,filetype
 {real_file},0, example,todo,This is a test-README. TODO: example,md
 """.format(real_file=real_file).lstrip()
 
-
-def test_cli():
+@pytest.mark.parametrize("plugins,", [["py", "c"], ["all"]])
+def test_cli(plugins):
     todos_name = "todos_cli.csv"
 
     globs = [
@@ -104,8 +104,6 @@ def test_cli():
         "main_c": str(TESTVECTOR_DIR / "main.c"),
         "unknown": str(TESTVECTOR_DIR / "file.unknown"),
     }
-
-    plugins = ["py", "c"]
 
     try:
         # Touch the todos file
