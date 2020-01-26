@@ -2,6 +2,8 @@ import csv
 from collections import namedtuple
 from functools import lru_cache
 import glob
+import os
+import pathlib
 import re
 import subprocess
 import sys
@@ -121,8 +123,10 @@ def to_csv(todos: Iterable[Todo], output_file: str):
         if csvfile != sys.stdout:
             csvfile.close()
 
-def shell_exec(args) -> Optional[str]:
+def shell_exec(args: List[str], directory: str) -> Optional[str]:
+    orig_dir = os.getcwd()
     try:
+        os.chdir(directory)
         proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if proc.stderr:
             return None
@@ -130,28 +134,36 @@ def shell_exec(args) -> Optional[str]:
         text = text.decode("utf-8").strip()
     except Exception:
         return None
+    finally:
+        os.chdir(orig_dir)
     return text
 
 @lru_cache
-def get_git_message(sha: str) -> Optional[str]:
+def get_git_message(sha: str, directory: str) -> Optional[str]:
     text = shell_exec([
-        "git", "show", sha,
+        "git",
+        "show",
+        sha,
         "-s",
         '--format="%s"',
-    ])
+    ], directory)
     return text.strip('"') if text else None
 
 @lru_cache
 def get_blame_for_file(file: str) -> Optional[Dict[int, Dict[str, str]]]:
+    file_abs_path = pathlib.Path(file).absolute()
+    parent_path = str(file_abs_path.parent)
     text = shell_exec([
-        "git", "blame", file,
+        "git",
+        "blame",
+        str(file_abs_path),
         "--no-show-name",
         "--date=short",
         "-e",
         "-l",
         "-w",
         "-c",
-    ])
+    ], parent_path)
 
     if not text:
         return None
@@ -171,7 +183,7 @@ def get_blame_for_file(file: str) -> Optional[Dict[int, Dict[str, str]]]:
                 "mail": mail,
                 "date": date,
                 "code": code,
-                "message": get_git_message(sha)
+                "message": get_git_message(sha, parent_path)
             }
     return blame_per_line
 
