@@ -6,6 +6,9 @@ from todofinder import TodoContext, Todo, scan_line
 _plugins = {}
 _enabled_plugins = {}
 _scan_line_original = scan_line
+_plugin_state = {
+    "python_in_multiline_comment": False,
+}
 
 ScanLineFunction = Callable[[str, TodoContext], Optional[Todo]]
 
@@ -35,9 +38,30 @@ def restore_scan_line_function():
 
 @plugin("py")
 def py(line: str, context: TodoContext) -> Optional[Todo]:
-    if not line.startswith("#"):
+    """
+    Line scanner that takes multi-line comments into account
+    """
+    # Figure out if we are in a multiline comment and keep the global state in sync
+    in_multiline_comment = _plugin_state["python_in_multiline_comment"]
+    n_multiline_tokens = line.count('"""')
+    if n_multiline_tokens & 1:
+        in_multiline_comment = not in_multiline_comment
+        _plugin_state["python_in_multiline_comment"] = in_multiline_comment
+
+    # Figure out if we have a comment, and pick out the relevant part if necessary
+    has_comment = in_multiline_comment
+    if "#" in line:
+        line = "".join(line.split("#")[1:])
+        has_comment = True
+    if '"""' in line:
+        line = "".join(line.split('"""')[1:])
+        has_comment = True
+
+    # Only scan if there is a comment in there
+    if has_comment:
+        return _scan_line_original(line, context)
+    else:
         return None
-    return _scan_line_original(line, context)
 
 @plugin("c")
 def c(line: str, context: TodoContext) -> Optional[Todo]:

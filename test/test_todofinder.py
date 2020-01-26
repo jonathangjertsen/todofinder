@@ -127,6 +127,9 @@ def test_cli():
 file,line_number,text,token,full_line,filetype
 {main_py},0, add code,todo,#TODO: add code,py
 {main_py},2, on indented line,todo,# TODO: on indented line,py
+{main_py},4, this is in a multiline comment,todo,TODO: this is in a multiline comment,py
+{main_py},6, catch this,todo,"another = ""this line has inline comment"" # TODO: catch this",py
+{main_py},8, catch THIS,todo,"yet_another = ""this line has an inline multiline comment"" \"\"\"\"\"\"TODO: catch THIS\"\"\"\"\"\"\",py
 {readme_md},0, example,todo,This is a test-README. TODO: example,md
 {main_c},2, something,todo,"printf(""Hello, World!""); // TODO: something",c
 {unknown},0, nothing,todo,".unknown is not associated with any plugins, so it should make the main scanline function run. TODO nothing",unknown
