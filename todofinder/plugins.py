@@ -35,6 +35,8 @@ def restore_scan_line_function():
 
 @plugin("py")
 def py(line: str, context: TodoContext) -> Optional[Todo]:
+    if not line.startswith("#"):
+        return None
     return _scan_line_original(line, context)
 
 @plugin("c")
