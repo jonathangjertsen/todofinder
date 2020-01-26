@@ -111,7 +111,7 @@ def test_cli(plugins):
             pass
 
         # CLI arguments
-        args = ["todofinder", "-g", *globs, "-o", todos_name, "-p", *plugins]
+        args = ["todofinder", "-g", *globs, "-o", todos_name, "-p", *plugins, "-b"]
 
         # Make the CLI function think it is running from the command line
         with patch.object(sys, "argv", args):
@@ -122,20 +122,21 @@ def test_cli(plugins):
         with open(todos_name, "r") as file:
             csv_data = file.read()
         assert csv_data == """
-file,line_number,text,token,full_line,filetype
-{main_py},0, add code,todo,#TODO: add code,py
-{main_py},2, on indented line,todo,# TODO: on indented line,py
-{main_py},4, this is in a multiline comment,todo,TODO: this is in a multiline comment,py
-{main_py},6, catch this,todo,"another = ""this line has inline comment"" # TODO: catch this",py
-{main_py},8, catch THIS,todo,"yet_another = ""this line has an inline multiline comment"" \"\"\"\"\"\"TODO: catch THIS\"\"\"\"\"\"\",py
-{readme_md},0, example,todo,This is a test-README. TODO: example,md
-{main_c},2, something,todo,"printf(""Hello, World!""); // TODO: something",c
-{main_c},4, catch multline comment,todo,TODO: catch multline comment,c
-{main_c},7, catch,todo,int x = 1; /* inline multiline-style comment TODO: catch*/,c
-{main_c},9, catch standalone comment,todo,// TODO: catch standalone comment,c
-{main_c},10,catch without spaces,todo,//TODO:catch without spaces,c
-{main_c},11,"catch multiline without spaces ,  another",todo,/*TODO:catch multiline without spaces TODO another*/,c
-{unknown},0, nothing,todo,".unknown is not associated with any plugins, so it should make the main scanline function run. TODO nothing",unknown
+file,line_number,text,token,full_line,filetype,author,date,commit,message
+{main_py},0, add code,todo,#TODO: add code,py,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,5d2aaa06aa46d995a2f4f23e7509aee21cfa327a,Building blocks for plugin system
+{main_py},2, on indented line,todo,# TODO: on indented line,py,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,e7a6affe8feb56c86b41320c341ac2f6629b94b2,Make sure TODOs on indented lines are caught
+{main_py},4, this is in a multiline comment,todo,TODO: this is in a multiline comment,py,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,f1072bbda9a1e7b6eff605389951005c7aed72aa,Finish up the Python plugin
+{main_py},6, catch this,todo,"another = ""this line has inline comment"" # TODO: catch this",py,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,f1072bbda9a1e7b6eff605389951005c7aed72aa,Finish up the Python plugin
+{main_py},8, catch THIS,todo,"yet_another = ""this line has an inline multiline comment"" \"\"\"\"\"\"TODO: catch THIS\"\"\"\"\"\"\",py,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,f1072bbda9a1e7b6eff605389951005c7aed72aa,Finish up the Python plugin
+{main_py},10,(someone): this,todo,this = 1 # todo(someone): this,py,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,6e506ea3ac80d5cb297378b39902213ddf4a99aa,Add some trickier test cases
+{readme_md},0, example,todo,This is a test-README. TODO: example,md,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,be19df81c86eda6606eb70e265f45f813f5e6bd9,Move most of the code to __init__ and get it tested
+{main_c},2, something,todo,"printf(""Hello, World!""); // TODO: something",c,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,5d2aaa06aa46d995a2f4f23e7509aee21cfa327a,Building blocks for plugin system
+{main_c},4, catch multline comment,todo,TODO: catch multline comment,c,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,8ded423e8ec2ff304980820f2e70d141f0b88071,Get the C plugin working. Fix potential bug when some scripts have syntax errors
+{main_c},7, catch,todo,int x = 1; /* inline multiline-style comment TODO: catch*/,c,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,8ded423e8ec2ff304980820f2e70d141f0b88071,Get the C plugin working. Fix potential bug when some scripts have syntax errors
+{main_c},9, catch standalone comment,todo,// TODO: catch standalone comment,c,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,8ded423e8ec2ff304980820f2e70d141f0b88071,Get the C plugin working. Fix potential bug when some scripts have syntax errors
+{main_c},10,catch without spaces,todo,//TODO:catch without spaces,c,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,8ded423e8ec2ff304980820f2e70d141f0b88071,Get the C plugin working. Fix potential bug when some scripts have syntax errors
+{main_c},11,"catch multiline without spaces ,  another",todo,/*TODO:catch multiline without spaces TODO another*/,c,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,8ded423e8ec2ff304980820f2e70d141f0b88071,Get the C plugin working. Fix potential bug when some scripts have syntax errors
+{unknown},0, nothing,todo,".unknown is not associated with any plugins, so it should make the main scanline function run. TODO nothing",unknown,jonathan.gjertsen@disruptive-technologies.com,2020-01-26,5d2aaa06aa46d995a2f4f23e7509aee21cfa327a,Building blocks for plugin system
 """.lstrip().format(**files)
     finally:
         os.remove(todos_name)

@@ -1,9 +1,11 @@
 import csv
 from collections import namedtuple
+from functools import lru_cache
 import glob
 import re
+import subprocess
 import sys
-from typing import Iterable, Optional, Tuple
+from typing import Dict, Iterable, Optional, List, Tuple
 
 LOWERCASE_CHARS = { chr(x) for x in range(ord('a'), ord('z')) }
 UPPERCASE_CHARS = { char.upper() for char in LOWERCASE_CHARS }
@@ -17,6 +19,23 @@ TOKENS = {
 
 TodoContext = namedtuple("TodoContext", "file line_number full_line filetype")
 Todo = namedtuple("Todo", "token text context")
+TodoBlame = namedtuple("TodoBlame", "author date commit message")
+
+TODO_FIELDS = (
+    "file",
+    "line_number",
+    "text",
+    "token",
+    "full_line",
+    "filetype"
+)
+
+BLAME_FIELDS = (
+    "author",
+    "date",
+    "commit",
+    "message"
+)
 
 def log_error(message):
     print(message, file=sys.stderr)
@@ -39,6 +58,10 @@ def get_todo_text(line: str) -> Optional[Tuple[str, str]]:
 
     # Guard against e.g. "autodoc"
     if before and before[-1] in VARNAME_CHARS:
+        return None
+
+    # Guard against e.g. "todofinder"
+    if after and after[0] and after[0][0] in VARNAME_CHARS:
         return None
 
     # Re-assemble the string
@@ -74,23 +97,107 @@ def scan_files(paths: Iterable[str], output_file: str) -> Iterable[Todo]:
         yield from scan_file(path)
 
 
+def to_csv_row(todo: Todo) -> List[str]:
+    return [
+        todo.context.file,
+        todo.context.line_number,
+        todo.text,
+        todo.token,
+        todo.context.full_line,
+        todo.context.filetype,
+    ]
+
 def to_csv(todos: Iterable[Todo], output_file: str):
-    with open(output_file, "w", newline="") as csvfile:
+    csvfile = sys.stdout
+    try:
+        if output_file is not None:
+            csvfile = open(output_file, "w", newline="")
+
         writer = csv.writer(csvfile)
-        writer.writerow([
-            "file",
-            "line_number",
-            "text",
-            "token",
-            "full_line",
-            "filetype"
-        ])
+        writer.writerow(TODO_FIELDS)
         for todo in todos:
-            writer.writerow([
-                todo.context.file,
-                todo.context.line_number,
-                todo.text,
-                todo.token,
-                todo.context.full_line,
-                todo.context.filetype,
+            writer.writerow(to_csv_row(todo))
+    finally:
+        if csvfile != sys.stdout:
+            csvfile.close()
+
+def shell_exec(args) -> Optional[str]:
+    try:
+        proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if proc.stderr:
+            return None
+        text = proc.stdout
+        text = text.decode("utf-8").strip()
+    except Exception:
+        return None
+    return text
+
+@lru_cache
+def get_git_message(sha: str) -> Optional[str]:
+    text = shell_exec([
+        "git", "show", sha,
+        "-s",
+        '--format="%s"',
+    ])
+    return text.strip('"') if text else None
+
+@lru_cache
+def get_blame_for_file(file: str) -> Optional[Dict[int, Dict[str, str]]]:
+    text = shell_exec([
+        "git", "blame", file,
+        "--no-show-name",
+        "--date=short",
+        "-e",
+        "-l",
+        "-w",
+        "-c",
+    ])
+
+    if not text:
+        return None
+
+    lines = text.split("\n")
+
+    blame_per_line = {}
+    for line in lines:
+        if line:
+            sha, mail_ish, date, *line_and_code_parts = line.split("\t")
+            mail = mail_ish.lstrip("(<").rstrip(">")
+            line_and_code = "\t".join(line_and_code_parts)
+            line, *code_parts = line_and_code.split(")")
+            code = ")".join(code_parts)
+            blame_per_line[int(line)] = {
+                "sha": sha,
+                "mail": mail,
+                "date": date,
+                "code": code,
+                "message": get_git_message(sha)
+            }
+    return blame_per_line
+
+def get_blame(todo: Todo) -> TodoBlame:
+    blame_per_line = get_blame_for_file(todo.context.file)
+    if blame_per_line is None:
+        return TodoBlame(None, None, None, None)
+    else:
+        blame = blame_per_line[todo.context.line_number + 1]
+        return TodoBlame(author=blame["mail"], commit=blame["sha"], date=blame["date"], message=blame["message"])
+
+def to_csv_with_blame(todos: Iterable[Todo], output_file: str):
+    csvfile = sys.stdout
+    try:
+        if output_file is not None:
+            csvfile = open(output_file, "w", newline="")
+        writer = csv.writer(csvfile)
+        writer.writerow(TODO_FIELDS + BLAME_FIELDS)
+        for todo in todos:
+            blame = get_blame(todo)
+            writer.writerow(to_csv_row(todo) + [
+                blame.author,
+                blame.date,
+                blame.commit,
+                blame.message,
             ])
+    finally:
+        if csvfile != sys.stdout:
+            csvfile.close()
